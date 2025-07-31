@@ -2,7 +2,7 @@
   "name": "GoldenTicket",
   "version": "0.1.0",
   "private": true,
-  "homepage": "./",
+  "homepage": ".",
   "dependencies": {
     "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@testing-library/dom": "^10.4.0",

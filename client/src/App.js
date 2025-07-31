@@ -12,7 +12,7 @@ import Result from "./pages/Result.js";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/">
       <Routes>
         <Route path="/" element={<LandingPage/>} /> 
         <Route path="/Login" element={<LoginPage/>} /> 

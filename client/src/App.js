@@ -1,4 +1,4 @@
-import {BrowserRouter as Router , Routes , Route} from "react-router-dom"
+import {HashRouter as Router , Routes , Route} from "react-router-dom"
 import React from "react";
 
 
@@ -12,7 +12,7 @@ import Result from "./pages/Result.js";
 
 function App() {
   return (
-    <Router basename="/">
+    <Router>
       <Routes>
         <Route path="/" element={<LandingPage/>} /> 
         <Route path="/Login" element={<LoginPage/>} /> 

@@ -5,7 +5,7 @@ import { auth } from './FirebaseConf/firebase';
 import Navbar from './components/Navbar';
 import './GamePage.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = "https://goldenticket.onrender.com";
 
 const GamePage = () => {
   const navigate = useNavigate();

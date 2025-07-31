@@ -184,7 +184,7 @@ const LandingPage = () => {
               <div className="step-number">3</div>
               <div className="step-content">
                 <h3>Choisissez vos numéros</h3>
-                <p>Sélectionnez 5 numéros uniques par grille achetée</p>
+                <p>Sélectionnez 2 grille possible par tirage</p>
               </div>
             </div>
           </div>

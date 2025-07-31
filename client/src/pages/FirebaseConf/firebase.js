@@ -4,13 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD6eAjN5-JXoCs8tPgoMwAbLD-bCfJxKRA",
-  authDomain: "rewardsoft-4825e.firebaseapp.com",
-  projectId: "rewardsoft-4825e",
-  storageBucket: "rewardsoft-4825e.appspot.com", // Corrigé
-  messagingSenderId: "357171218149",
-  appId: "1:357171218149:web:125e0ceca2834ea5e6360c",
-  measurementId: "G-13QDXYQSEY"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialiser Firebase

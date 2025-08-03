@@ -144,7 +144,7 @@ app.post('/api/buy-ticket', authenticate, async (req, res) => {
     // Mettre à jour la grille
     await gridDoc.ref.update({
       isTaken: true,
-      takenBy: userId,
+      takenBy: req.user.name,
       takenAt: admin.firestore.FieldValue.serverTimestamp()
     });
     

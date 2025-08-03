@@ -48,7 +48,11 @@ const Result = () => {
           ...doc.data(),
           date: doc.data().winDate?.toDate() || new Date()
         }));
+        console.log(winnersData);
+        
         setWinners(winnersData);
+        
+        
 
         // 3. Charger les numéros gagnants
         const winningNumbersDoc = await getDoc(doc(db, 'settings', 'winning_numbers'));

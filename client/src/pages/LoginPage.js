@@ -158,7 +158,7 @@ const LoginPage = () => {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          credits: 0,
+          credits: 400,
           sponsorCode: newSponsorCode,
           referredBy: validation.referrerId || null,
           profileCompleted: false,
@@ -195,22 +195,8 @@ const LoginPage = () => {
         </div>
         
         <div className="login-form">
-          <div className="form-group">
-            <label>Code de parrainage (optionnel)</label>
-            <input 
-              type="text" 
-              value={sponsorCode}
-              onChange={(e) => setSponsorCode(e.target.value)}
-              placeholder="Entrez LP-XXXX"
-            />
-            <p className="note">
-              Si vous avez un code de parrainage (format LP-XXXX), entrez-le pour bénéficier de 150 points bonus après votre première participation.
-            </p>
-          </div>
           
-          <div className="separator">
-            <span>OU</span>
-          </div>
+        
           
           <button 
             className="google-btn"
@@ -244,14 +230,7 @@ const LoginPage = () => {
           </div>
         </div>
         
-        <div className="benefits">
-          <h3>Avantages du parrainage</h3>
-          <ul>
-            <li>Vous et votre parrain recevrez chacun 150 points après votre première participation</li>
-            <li>Votre code de parrainage personnel sera généré après inscription</li>
-            <li>Accès à des tirages exclusifs pour les membres parrainés</li>
-          </ul>
-        </div>
+       
         
         <div className="footer">
           <p>Jouez avec modération • Interdit aux moins de 18 ans</p>

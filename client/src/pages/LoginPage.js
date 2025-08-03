@@ -158,7 +158,7 @@ const LoginPage = () => {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          credits: 400,
+          credits: 200,
           sponsorCode: newSponsorCode,
           referredBy: validation.referrerId || null,
           profileCompleted: false,

@@ -193,8 +193,8 @@ const LandingPage = () => {
             <p>
               <strong>Note :</strong> Pendant la période de lancement, les tirages seront organisés 
               dès que nous aurons atteint un nombre suffisant de participants. À terme, nous prévoyons 
-              d'organiser des tirages hebdomadaires.
-              <strong>Note 2:</strong> Les deux premiers tirages seront gratuitement pour les 50 premieres personnes avec un bonus de 100PTS
+              d'organiser des tirages hebdomadaires. <br/>
+              <strong>Note 2:</strong> Les deux premiers tirages seront gratuitement pour les 50 premieres personnes avec un bonus de 200PTS
             </p>
           </div>
         </div>

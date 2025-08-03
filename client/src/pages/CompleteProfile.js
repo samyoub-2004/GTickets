@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from './FirebaseConf/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import './CompleteProfile.css';
 
 const CompleteProfile = () => {
@@ -11,9 +11,12 @@ const CompleteProfile = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const canvasRef = useRef(null);
   
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     phone: '',
     address: '',
     postalCode: '',
@@ -22,13 +25,49 @@ const CompleteProfile = () => {
     birthDate: ''
   });
   
-  // Vérifier si l'utilisateur est connecté
+  // Vérifier si l'utilisateur est connecté et charger les données
   useEffect(() => {
+    const fetchUserData = async (user) => {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(userRef);
+        
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          
+          // Séparer le displayName en prénom et nom
+          let firstName = '';
+          let lastName = '';
+          if (userData.displayName) {
+            const nameParts = userData.displayName.split(' ');
+            firstName = nameParts[0] || '';
+            lastName = nameParts.slice(1).join(' ') || '';
+          }
+          
+          setFormData({
+            firstName: userData.firstName || firstName,
+            lastName: userData.lastName || lastName,
+            phone: userData.phone || '',
+            address: userData.address || '',
+            postalCode: userData.postalCode || '',
+            city: userData.city || '',
+            country: userData.country || 'Algérie',
+            birthDate: userData.birthDate || ''
+          });
+        }
+        setInitialLoad(false);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données:", error);
+        setInitialLoad(false);
+      }
+    };
+
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (!user) {
         navigate('/login');
       } else {
         setIsVisible(true);
+        fetchUserData(user);
       }
     });
     
@@ -104,8 +143,10 @@ const CompleteProfile = () => {
     setLoading(true);
     setError('');
     
-    // Validation basique
-    if (!formData.phone || !formData.address || !formData.postalCode || !formData.city || !formData.country) {
+    // Validation
+    if (!formData.firstName || !formData.lastName || 
+        !formData.phone || !formData.address || 
+        !formData.postalCode || !formData.city || !formData.country) {
       setError('Veuillez remplir tous les champs obligatoires');
       setLoading(false);
       return;
@@ -142,8 +183,8 @@ const CompleteProfile = () => {
       <div className={`complete-profile-content ${isVisible ? 'visible' : ''}`}>
         <div className="profile-header">
           <div className="logo">
-            <div className="logo-mark">LP</div>
-            <h1>LotoPrivé</h1>
+            <div className="logo-mark">GT</div>
+            <h1>GoldenTicket</h1>
           </div>
           <p className="tagline">Complétez votre profil</p>
         </div>
@@ -161,6 +202,34 @@ const CompleteProfile = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="profile-form">
+          <div className="form-row">
+            <div className="form-group">
+              <label>Prénom <span className="required">*</span></label>
+              <input 
+                type="text" 
+                name="firstName" 
+                value={formData.firstName}
+                onChange={handleChange}
+                placeholder="Votre prénom"
+                disabled={initialLoad}
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <label>Nom <span className="required">*</span></label>
+              <input 
+                type="text" 
+                name="lastName" 
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Votre nom"
+                disabled={initialLoad}
+                required
+              />
+            </div>
+          </div>
+          
           <div className="form-group">
             <label>Numéro de téléphone <span className="required">*</span></label>
             <input 
@@ -169,6 +238,7 @@ const CompleteProfile = () => {
               value={formData.phone}
               onChange={handleChange}
               placeholder="Ex: 0550123456"
+              disabled={initialLoad}
               required
             />
           </div>
@@ -181,6 +251,7 @@ const CompleteProfile = () => {
               value={formData.address}
               onChange={handleChange}
               placeholder="Ex: 123 Rue des Lauriers"
+              disabled={initialLoad}
               required
             />
           </div>
@@ -194,6 +265,7 @@ const CompleteProfile = () => {
                 value={formData.postalCode}
                 onChange={handleChange}
                 placeholder="Ex: 16000"
+                disabled={initialLoad}
                 required
               />
             </div>
@@ -206,6 +278,7 @@ const CompleteProfile = () => {
                 value={formData.city}
                 onChange={handleChange}
                 placeholder="Ex: Alger"
+                disabled={initialLoad}
                 required
               />
             </div>
@@ -218,6 +291,7 @@ const CompleteProfile = () => {
                 name="country" 
                 value={formData.country}
                 onChange={handleChange}
+                disabled={initialLoad}
                 required
               >
                 <option value="Algérie">Algérie</option>
@@ -231,6 +305,7 @@ const CompleteProfile = () => {
                 name="birthDate" 
                 value={formData.birthDate}
                 onChange={handleChange}
+                disabled={initialLoad}
               />
             </div>
           </div>
@@ -245,10 +320,12 @@ const CompleteProfile = () => {
           <button 
             type="submit" 
             className="submit-btn"
-            disabled={loading || success}
+            disabled={loading || success || initialLoad}
           >
             {loading ? (
               <div className="spinner"></div>
+            ) : initialLoad ? (
+              'Chargement...'
             ) : (
               'Finaliser mon profil'
             )}
@@ -265,7 +342,7 @@ const CompleteProfile = () => {
         
         <div className="footer">
           <p>Jouez avec modération • Interdit aux moins de 18 ans</p>
-          <p>© {new Date().getFullYear()} LotoPrivé - Tous droits réservés</p>
+          <p>© {new Date().getFullYear()} GoldenTicket - Tous droits réservés</p>
         </div>
       </div>
     </div>

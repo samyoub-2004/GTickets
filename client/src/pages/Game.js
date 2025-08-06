@@ -1,45 +1,33 @@
-// src/pages/GamePage/GamePage.js
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from './FirebaseConf/firebase';
 import Navbar from './components/Navbar';
 import './GamePage.css';
 
-const API_URL = "https://goldenticket.onrender.com";
-
 const GamePage = () => {
   const navigate = useNavigate();
-  const [gameData, setGameData] = useState(null);
+  const [prize, setPrize] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [countdown, setCountdown] = useState('Chargement...');
   const [userCredits, setUserCredits] = useState(0);
   const [userTickets, setUserTickets] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [ticketsPurchased, setTicketsPurchased] = useState(0);
-  const [ticketsBought , setTicketsBought] = useState();
-  const [assignedGrid, setAssignedGrid] = useState(null);
-  const [animationNumbers, setAnimationNumbers] = useState([]);
-  const [animationPhase, setAnimationPhase] = useState(0);
-  const animationIntervalRef = useRef(null);
   const canvasRef = useRef(null);
-  const countdownIntervalRef = useRef(null);
-  const [showDrawButton, setShowDrawButton] = useState(false);
-  const [isDrawCompleted, setIsDrawCompleted] = useState(false);
-  const [showResultsButton, setShowResultsButton] = useState(false);
-  const [drawStatus, setDrawStatus] = useState('');
-  const [winnersExist, setWinnersExist] = useState(false);
+  const [selectedNumbers, setSelectedNumbers] = useState([]);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [stats, setStats] = useState({ totalTicketsSold: 0, totalRevenue: 0 });
+  const [nextDraw, setNextDraw] = useState(null);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  
+  // Constantes du jeu
+  const MAX_SELECTABLE = 5;
+  const MAX_TICKETS_PER_USER = 2;
+  const NUMBER_RANGE = 50;
 
-  // Récupérer le token d'authentification
-  const getAuthToken = useCallback(async () => {
-    const user = auth.currentUser;
-    if (!user) return null;
-    return await user.getIdToken();
-  }, []);
+  const API_URL = process.env.API_URL || "http://localhost:5000";
 
-  // Charger les données du jeu depuis l'API
+  // Récupérer les données depuis le serveur
   useEffect(() => {
-    const fetchGameData = async () => {
+    const fetchData = async () => {
       try {
         const user = auth.currentUser;
         if (!user) {
@@ -47,13 +35,13 @@ const GamePage = () => {
           return;
         }
 
-        const token = await getAuthToken();
-        if (!token) throw new Error('Token non disponible');
-
+        // Récupérer le token ID
+        const idToken = await user.getIdToken();
+        
         const response = await fetch(`${API_URL}/api/game-data`, {
-          
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${idToken}`
           }
         });
 
@@ -63,56 +51,59 @@ const GamePage = () => {
 
         const data = await response.json();
         
-        
-       
-        
-        
+        setPrize(data.prize);
         setUserCredits(data.userCredits);
-        setUserTickets(data.userTickets);
-        setWinnersExist(data.winnersExist);
-        setShowResultsButton(data.winnersExist);
+        setStats(data.stats);
+        setNextDraw(data.nextDraw);
         
-        setGameData({
-          prize: data.prize,
-          draw: data.draw,
-          stats: data.stats
-        });
-
-        // Compter les tickets pour le tirage actuel
-        const currentTickets = data.userTickets.filter(ticket => 
-          ticket.prizeId === data.prize?.name && 
-          ticket.status === 'pending'
-        );
-        setTicketsPurchased(currentTickets.length);
-        setTicketsBought(data.userTickets.length)
-
-        // Configurer le compte à rebours
-        if (data.draw?.date) {
-          const drawDate = new Date(data.draw.date._seconds * 1000);
-          startCountdown(drawDate);
-          setShowDrawButton(true);
-        } else {
-          setCountdown('Aucun tirage programmé');
-        }
-
-        // Vérifier si le tirage est terminé
-        setIsDrawCompleted(data.draw?.completed || false);
+        // Convertir les dates
+        const ticketsWithDates = data.userTickets.map(ticket => ({
+          ...ticket,
+          purchaseDate: new Date(ticket.purchaseDate)
+        }));
+        
+        setUserTickets(ticketsWithDates.sort((a, b) => 
+          b.purchaseDate - a.purchaseDate
+        ));
 
       } catch (error) {
-        showNotification("Erreur de chargement des données du jeu", "error");
+        showNotification("Erreur de chargement des données: " + error.message, "error");
         console.error("Erreur de chargement:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchGameData();
+    fetchData();
+  }, [navigate]);
 
-    return () => {
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      if (animationIntervalRef.current) clearInterval(animationIntervalRef.current);
+  // Mettre à jour le compte à rebours
+  useEffect(() => {
+    if (!nextDraw) return;
+    
+    const calculateCountdown = () => {
+      const now = new Date();
+      const drawDate = new Date(nextDraw.scheduledAt);
+      const diff = drawDate - now;
+      
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      setCountdown({ days, hours, minutes, seconds });
     };
-  }, [navigate, getAuthToken]);
+    
+    calculateCountdown();
+    const intervalId = setInterval(calculateCountdown, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [nextDraw]);
 
   // Effet pour le fond animé
   useEffect(() => {
@@ -120,6 +111,7 @@ const GamePage = () => {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
+    let animationFrameId;
     
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
@@ -130,7 +122,7 @@ const GamePage = () => {
     window.addEventListener('resize', resizeCanvas);
     
     const particles = [];
-    const particleCount = window.innerWidth < 768 ? 30 : 100;
+    const particleCount = Math.min(Math.floor(window.innerWidth * window.innerHeight / 5000), 150);
     
     for (let i = 0; i < particleCount; i++) {
       particles.push({
@@ -168,51 +160,15 @@ const GamePage = () => {
       });
       
       ctx.globalAlpha = 1.0;
-      requestAnimationFrame(animate);
+      animationFrameId = requestAnimationFrame(animate);
     };
     
     animate();
     
     return () => {
       window.removeEventListener('resize', resizeCanvas);
+      cancelAnimationFrame(animationFrameId);
     };
-  }, []);
-
-  // Démarrer le compte à rebours
-  const startCountdown = useCallback((drawDateTime) => {
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-    
-    const calculateCountdown = () => {
-      const now = new Date();
-      const diff = drawDateTime - now;
-      
-      if (diff <= 0) {
-        setCountdown("Le tirage doit commencer!");
-        setDrawStatus('in-progress');
-        clearInterval(countdownIntervalRef.current);
-        setShowDrawButton(true);
-        
-        // Après 5 secondes, afficher le bouton des résultats
-        setTimeout(() => {
-          setDrawStatus('completed');
-          setShowResultsButton(true);
-        }, 5000);
-        
-        return;
-      }
-      
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      
-      setCountdown(`${days}j ${hours}h ${minutes}m ${seconds}s`);
-    };
-    
-    calculateCountdown();
-    countdownIntervalRef.current = setInterval(calculateCountdown, 1000);
   }, []);
 
   // Afficher une notification
@@ -221,196 +177,186 @@ const GamePage = () => {
     setTimeout(() => setNotification({ show: false, message: '', type: '' }), 3000);
   }, []);
 
-  // Navigation
-  const handleViewDraw = () => navigate('/LiveDraw');
-  const handleViewResults = () => navigate('/Result');
-  const handleLogout = useCallback(() => auth.signOut().then(() => navigate('/')), [navigate]);
+  // Gérer la sélection des numéros
+  const handleNumberSelect = useCallback((number) => {
+    setSelectedNumbers(prev => {
+      if (prev.includes(number)) {
+        return prev.filter(n => n !== number);
+      } else if (prev.length < MAX_SELECTABLE) {
+        return [...prev, number];
+      }
+      return prev;
+    });
+  }, [MAX_SELECTABLE]);
 
-  // Acheter un ticket via l'API
-  const handleBuyTicket = async () => {
-    if (ticketsPurchased >= 2) {
-      showNotification("Vous avez déjà acheté 2 tickets pour ce tirage", "info");
+  // Générer des numéros aléatoires
+  const generateRandomNumbers = useCallback(() => {
+    const numbers = [];
+    while (numbers.length < MAX_SELECTABLE) {
+      const randomNum = Math.floor(Math.random() * NUMBER_RANGE) + 1;
+      if (!numbers.includes(randomNum)) {
+        numbers.push(randomNum);
+      }
+    }
+    setSelectedNumbers(numbers.sort((a, b) => a - b));
+  }, [MAX_SELECTABLE, NUMBER_RANGE]);
+
+  // Acheter un ticket
+  const handlePurchaseTicket = async () => {
+    if (!prize ) {
+      showNotification("Aucun tirage en cours", "error");
       return;
     }
-    
-    if (!gameData?.prize) {
-      showNotification("Aucun tirage actif pour le moment", "error");
+
+    // Vérifier la limite de tickets
+    const pendingTickets = userTickets.filter(t => t.status === 'pending');
+    if (pendingTickets.length >= MAX_TICKETS_PER_USER) {
+      showNotification(`Limite atteinte: ${MAX_TICKETS_PER_USER} tickets maximum!`, "error");
       return;
     }
-    
-    if (userCredits < gameData.prize.entryPoints) {
-      showNotification("Crédits insuffisants pour participer", "error");
+
+    if (selectedNumbers.length !== MAX_SELECTABLE) {
+      showNotification(`Sélectionnez ${MAX_SELECTABLE} numéros`, "error");
       return;
     }
-    
-    setShowTicketModal(true);
-    setAnimationPhase(1);
-    startAnimation();
+
+    if (userCredits < prize.entryPoints) {
+      showNotification(`Crédits insuffisants`, "error");
+      return;
+    }
+
+    setIsPurchasing(true);
     
     try {
-      const token = await getAuthToken();
-      if (!token) throw new Error('Token non disponible');
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error("Session expirée");
+      }
+
+      const idToken = await user.getIdToken();
       
-      const response = await fetch(`${API_URL}/api/buy-ticket`, {
+      const response = await fetch(`${API_URL}/api/purchase-ticket`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          entryPoints: gameData.prize.entryPoints
+          selectedNumbers,
+          prize,
+          
         })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de l\'achat');
+        throw new Error(errorData.error || "Erreur d'achat");
       }
 
-      const { grid, ticketId, newCredits } = await response.json();
-      
-      setAssignedGrid({
-        numbers: grid,
-        isWinning: false
-      });
+      const result = await response.json();
       
       // Mettre à jour l'état local
-      setUserCredits(newCredits);
-      setTicketsPurchased(prev => prev + 1);
+      setUserCredits(result.newCredits);
       
-      // Ajouter le nouveau ticket
       const newTicket = {
-        id: ticketId,
-        numbers: grid,
-        date: new Date(),
-        prizeId: gameData.prize.name,
-        status: 'pending',
-        isWinning: false
+        id: `temp-${Date.now()}`,
+        numbers: [...selectedNumbers].sort((a, b) => a - b),
+        userId: user.uid,
+        status: "pending",
+        purchaseDate: new Date(),
+        entryPoints: prize.entryPoints
       };
       
-      setUserTickets(prev => [...prev, newTicket]);
-      
-      // Mettre à jour les stats
-      setGameData(prev => ({
-        ...prev,
-        stats: {
-          ...prev.stats,
-          totalTicketsSold: prev.stats.totalTicketsSold + 1,
-          totalRevenue: prev.stats.totalRevenue + gameData.prize.entryPoints,
-          activePlayers: ticketsPurchased === 0 
-            ? prev.stats.activePlayers + 1 
-            : prev.stats.activePlayers
-        }
+      setUserTickets(prev => [newTicket, ...prev]);
+      setStats(prev => ({
+        totalTicketsSold: prev.totalTicketsSold + 1,
+        totalRevenue: prev.totalRevenue + prize.entryPoints
       }));
-
-      setTimeout(() => {
-        setAnimationPhase(2);
-        clearInterval(animationIntervalRef.current);
-      }, 3000);
+      setSelectedNumbers([]);
+      
+      showNotification("Ticket acheté avec succès!", "success");
       
     } catch (error) {
-      console.error("Erreur d'achat:", error);
-      showNotification(error.message || "Erreur lors de l'achat du ticket", "error");
-      setShowTicketModal(false);
-      setAnimationPhase(0);
-      clearInterval(animationIntervalRef.current);
+      showNotification(error.message || "Erreur lors de l'achat", "error");
+    } finally {
+      setIsPurchasing(false);
     }
   };
 
-  // Confirmer la participation (déplacée dans handleBuyTicket)
-  const confirmParticipation = useCallback(() => {
-    setShowTicketModal(false);
-    setAnimationPhase(0);
-    setAssignedGrid(null);
-    showNotification("Participation enregistrée avec succès!", "success");
-  }, [showNotification]);
+  // Générer la grille de numéros
+  const renderNumberGrid = useCallback(() => {
+    return Array.from({ length: NUMBER_RANGE }, (_, i) => i + 1).map(num => (
+      <button
+        key={num}
+        className={`number-btn ${selectedNumbers.includes(num) ? 'selected' : ''}`}
+        onClick={() => handleNumberSelect(num)}
+        disabled={selectedNumbers.length >= MAX_SELECTABLE && !selectedNumbers.includes(num)}
+      >
+        {num}
+      </button>
+    ));
+  }, [NUMBER_RANGE, selectedNumbers, handleNumberSelect, MAX_SELECTABLE]);
 
-  // Ajouter des crédits via l'API
+  // Navigation
+  const handleLogout = useCallback(() => auth.signOut().then(() => navigate('/')), [navigate]);
+
+  // Ajouter des crédits
   const handleAddCredits = useCallback(async (amount) => {
     try {
-      const token = await getAuthToken();
-      if (!token) throw new Error('Token non disponible');
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const idToken = await user.getIdToken();
       
       const response = await fetch(`${API_URL}/api/add-credits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({ amount })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur de recharge');
+        throw new Error(errorData.error || "Erreur de recharge");
       }
 
-      const { success } = await response.json();
-      if (success) {
-        setUserCredits(prev => prev + amount);
-        showNotification(`Recharge de ${amount} points réussie!`, "success");
-      }
+      const result = await response.json();
+      setUserCredits(result.newCredits);
+      showNotification(`Recharge de ${amount} points réussie!`, "success");
       
     } catch (error) {
-      console.error("Erreur d'ajout de crédits:", error);
       showNotification(error.message || "Erreur lors de la recharge", "error");
     }
-  }, [getAuthToken, showNotification]);
+  }, [showNotification]);
 
-  // Fonctions d'animation
-  const startAnimation = useCallback(() => {
-    setAnimationNumbers(generateRandomNumbers(50, 100));
-    animationIntervalRef.current = setInterval(() => {
-      setAnimationNumbers(generateRandomNumbers(50, 100));
-    }, 100);
-  }, []);
-  
-  const generateRandomNumbers = useCallback((count, max) => {
-    const numbers = new Set();
-    while (numbers.size < count) {
-      numbers.add(Math.floor(Math.random() * max) + 1);
-    }
-    return Array.from(numbers);
-  }, []);
-
-  // Formater la date
-  const formatDate = useCallback((dateObj) => {
-    if (!dateObj) return '--';
+  // Formater les dates
+  const formatDate = useCallback((date) => {
+    if (!date) return 'Date inconnue';
     
     try {
-      // Gérer les dates Firebase Timestamp
-      const date = dateObj.seconds 
-        ? new Date(dateObj.seconds * 1000) 
-        : new Date(dateObj);
-      
-      return date.toLocaleDateString('fr-FR', {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      return dateObj.toLocaleDateString('fr-FR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
       });
-    } catch {
-      return '--';
+    } catch (e) {
+      return 'Date invalide';
     }
   }, []);
 
-  // Afficher le statut du ticket
-  const renderTicketStatus = (ticket) => {
-    if (ticket.status === 'pending') {
-      return <span className="status-badge pending">En attente</span>;
+  // Vérifier et naviguer vers le tirage
+  const handleCheckDraw = useCallback(() => {
+    if (!nextDraw || !nextDraw.id) {
+      showNotification("Aucun tirage en cours", "error");
+      return;
     }
-    
-    if (ticket.status === 'won') {
-      return <span className="status-badge won">Gagnant</span>;
-    }
-    
-    if (ticket.status === 'lost') {
-      return <span className="status-badge lost">Perdant</span>;
-    }
-    
-    return <span className="status-badge">Terminé</span>;
-  };
+    navigate(`/LiveDraw`);
+  }, [navigate, nextDraw, showNotification]);
 
   if (loading) {
     return (
@@ -421,12 +367,22 @@ const GamePage = () => {
     );
   }
 
+  // Calculs dérivés
+  const progressPercentage = prize 
+    ? Math.min((stats.totalRevenue / prize.targetValue) * 100, 100)
+    : 0;
+
+  const pendingTicketsCount = userTickets.filter(t => t.status === 'pending').length;
+  const canPurchase = !isPurchasing && 
+                      selectedNumbers.length === MAX_SELECTABLE && 
+                      pendingTicketsCount < MAX_TICKETS_PER_USER &&
+                      userCredits >= (prize?.entryPoints || 0);
+
   return (
     <div className="game-page">
       <canvas ref={canvasRef} className="background-canvas"></canvas>
       
       <Navbar 
-        countdown={countdown} 
         userCredits={userCredits} 
         onLogout={handleLogout} 
         onAddCredits={handleAddCredits} 
@@ -439,66 +395,57 @@ const GamePage = () => {
       )}
       
       <div className="game-container">
-        <div className="game-header">
-          <div className="countdown-section">
-            <h2>Prochain tirage</h2>
-            <div className="countdown-display">
-              <i className="icon">⏱️</i> 
-              {drawStatus === 'in-progress' ? (
-                <span className="draw-in-progress">Tirage en cours...</span>
-              ) : (
-                countdown
-              )}
-            </div>
-            
-            
-           
-            
-            {drawStatus === 'in-progress' && (
-              <div className="draw-progress">
-                <p>Le tirage est en cours...</p>
-                <div className="progress-loader">
-                  <div className="loader-spinner small"></div>
-                </div>
-              </div>
-            )}
-            
-            {(showResultsButton || winnersExist) && (
-              <button 
-                className="view-results-btn pulse"
-                onClick={handleViewResults}
-              >
-                <i className="icon">🏆</i> Voir les résultats
-              </button>
-            )}
+        {/* Section des statistiques */}
+        <div className="stats-section">
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalTicketsSold}</div>
+            <div className="stat-label">Grilles vendues</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{stats.totalRevenue} DA</div>
+            <div className="stat-label">Cagnotte</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-value">{pendingTicketsCount}/{MAX_TICKETS_PER_USER}</div>
+            <div className="stat-label">Vos tickets</div>
           </div>
           
-          <div className="stats-section">
-            <div className="stat-card">
-              <div className="stat-value">{gameData?.stats?.totalTicketsSold || 0}</div>
-              <div className="stat-label">Grilles vendues</div>
+          {/* Compte à rebours */}
+          {nextDraw && (
+            <div className="stat-card countdown-card">
+              <div className="countdown-value">
+                <div className="countdown-unit">
+                  <span>{countdown.days}</span>
+                  <small>Jours</small>
+                </div>
+                <div className="countdown-unit">
+                  <span>{countdown.hours.toString().padStart(2, '0')}</span>
+                  <small>Heures</small>
+                </div>
+                <div className="countdown-unit">
+                  <span>{countdown.minutes.toString().padStart(2, '0')}</span>
+                  <small>Minutes</small>
+                </div>
+                <div className="countdown-unit">
+                  <span>{countdown.seconds.toString().padStart(2, '0')}</span>
+                  <small>Secondes</small>
+                </div>
+              </div>
+              <div className="stat-label">Prochain tirage</div>
             </div>
-            <div className="stat-card">
-              <div className="stat-value">{gameData?.stats?.activePlayers || 0}</div>
-              <div className="stat-label">Participants</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{gameData?.stats?.totalRevenue || 0} DA</div>
-              <div className="stat-label">Cagnotte</div>
-            </div>
-          </div>
+          )}
         </div>
-        
+
         <div className="prize-section">
           <h2>Objet à gagner</h2>
           
-          {gameData?.prize ? (
+          {prize ? (
             <div className="prize-card">
               <div className="prize-image-container">
-                {gameData.prize.imageUrl ? (
+                {prize.imageUrl ? (
                   <img 
-                    src={gameData.prize.imageUrl} 
-                    alt={gameData.prize.name} 
+                    src={prize.imageUrl} 
+                    alt={prize.name} 
                     className="prize-image" 
                     onError={(e) => {
                       e.target.onerror = null;
@@ -512,35 +459,51 @@ const GamePage = () => {
                 )}
               </div>
               <div className="prize-details">
-                <h3>{gameData.prize.name}</h3>
-                <p className="prize-description">{gameData.prize.description}</p>
+                <h3>{prize.name}</h3>
+                <p className="prize-description">{prize.description}</p>
                 
                 <div className="prize-stats">
                   <div className="prize-stat">
                     <span>Valeur estimée:</span>
-                    <strong>{gameData.prize.value} DA</strong>
+                    <strong>{prize.value} DA</strong>
                   </div>
                   <div className="prize-stat">
                     <span>Points requis:</span>
-                    <strong>{gameData.prize.entryPoints} points</strong>
+                    <strong>{prize.entryPoints} points</strong>
                   </div>
                   <div className="prize-stat">
                     <span>Objectif:</span>
-                    <strong>{gameData.prize.targetValue} DA</strong>
+                    <strong>{prize.targetValue} DA</strong>
                   </div>
+                  {nextDraw && (
+                    <div className="prize-stat">
+                      <span>Date du tirage:</span>
+                      <strong>{formatDate(nextDraw.scheduledAt)}</strong>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="progress-container">
                   <div className="progress-label">
-                    Progression: {Math.round((gameData.stats.totalRevenue / gameData.prize.targetValue) * 100)}%
+                    Progression: {Math.round(progressPercentage)}%
                   </div>
                   <div className="progress-bar">
                     <div 
                       className="progress-fill" 
-                      style={{ width: `${Math.min((gameData.stats.totalRevenue / gameData.prize.targetValue) * 100, 100)}%` }}
+                      style={{ width: `${progressPercentage}%` }}
                     ></div>
                   </div>
                 </div>
+
+                {/* Bouton pour vérifier le tirage */}
+                {nextDraw && (
+                  <button 
+                    className="view-draw-btn random-btn"
+                    onClick={handleCheckDraw}
+                  >
+                    Voir le tirage
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -552,113 +515,118 @@ const GamePage = () => {
           )}
         </div>
         
-        <div className="ticket-purchase-section">
-          <div className="purchase-info">
-            <h3>Participer au tirage</h3>
-            <p>Sélectionnez vos numéros pour tenter de gagner</p>
-            <div className="ticket-limit">
-              <span>Tickets achetés: {ticketsBought}/2</span>
+        <div className="ticket-section">
+          <h2>Choisissez vos {MAX_SELECTABLE} numéros (1-{NUMBER_RANGE})</h2>
+          
+          <div className="ticket-actions">
+            <div className="ticket-limit-info">
+              <i className="icon">🎫</i>
+              <span>
+                Tickets en attente: <strong>{pendingTicketsCount}/{MAX_TICKETS_PER_USER}</strong>
+              </span>
             </div>
+            
+            <button 
+              className="random-btn"
+              onClick={generateRandomNumbers}
+              disabled={selectedNumbers.length === MAX_SELECTABLE}
+            >
+              <i className="icon">🎲</i> Générer aléatoirement
+            </button>
           </div>
           
-          <button 
-            className="buy-ticket-btn"
-            onClick={handleBuyTicket}
-            disabled={ticketsPurchased >= 2 || !gameData?.prize || isDrawCompleted || drawStatus === 'in-progress' || ticketsBought >= 2}
+          <div className="number-grid">
+            {renderNumberGrid()}
+          </div>
+          
+          <div className="selection-info">
+            <p>
+              <span>Numéros sélectionnés: </span>
+              <strong>
+                {selectedNumbers.length > 0 
+                  ? selectedNumbers.sort((a, b) => a - b).join(', ') 
+                  : 'Aucun'}
+              </strong>
+            </p>
+            <p>
+              <span>Coût: </span>
+              <strong>{prize ? prize.entryPoints : '--'} points</strong>
+            </p>
+            <p>
+              <span>Votre solde: </span>
+              <strong>{userCredits} points</strong>
+            </p>
+          </div>
+          
+          <button
+            className={`purchase-btn ${isPurchasing ? 'loading' : ''}`}
+            onClick={handlePurchaseTicket}
+            disabled={!canPurchase}
           >
-            Acheter un ticket ({gameData?.prize?.entryPoints || '--'} points)
+            {isPurchasing ? (
+              <>
+                <div className="loader-spinner small"></div>
+                Traitement...
+              </>
+            ) : (
+              `Acheter le ticket (${prize ? prize.entryPoints : '--'} points)`
+            )}
           </button>
+          
+          {!canPurchase && selectedNumbers.length === MAX_SELECTABLE && (
+            <div className="purchase-warning">
+              {userCredits < (prize?.entryPoints || 0) ? (
+                <>
+                  <i className="icon">⚠️</i>
+                  <span>Crédits insuffisants pour participer</span>
+                </>
+              ) : pendingTicketsCount >= MAX_TICKETS_PER_USER ? (
+                <>
+                  <i className="icon">⚠️</i>
+                  <span>Limite de tickets atteinte</span>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
         
         <div className="history-section">
-          <h2>Mes participations</h2>
+          <h2>Historique de vos tickets</h2>
           
           {userTickets.length > 0 ? (
             <div className="tickets-list">
-              {userTickets.slice(0, 5).map(ticket => {
-                // Convertir les dates Firebase si nécessaire
-                const ticketDate = ticket.date?.seconds 
-                  ? new Date(ticket.date.seconds * 1000) 
-                  : ticket.date;
-                
-                return (
-                  <div key={ticket.id} className="ticket-card">
-                    <div className="ticket-header">
-                      
-                      <span className="ticket-prize">{ticket.prizeId}</span>
-                      
-                    </div>
-                    <div className="ticket-numbers">
-                      {ticket.numbers.sort((a, b) => a - b).map(num => (
-                        <span key={num} className="ticket-number">{num}</span>
-                      ))}
-                    </div>
-                    <div className="ticket-status">
-                      {renderTicketStatus(ticket)}
-                    </div>
+              {userTickets.map(ticket => (
+                <div key={ticket.id} className="ticket-card">
+                  <div className="ticket-header">
+                    <span className="ticket-id">Ticket #{ticket.id.slice(0, 6)}</span>
+                    <span className="ticket-date">
+                      {formatDate(ticket.purchaseDate)}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className="ticket-numbers">
+                    {ticket.numbers.sort((a, b) => a - b).map(num => (
+                      <span key={num} className="ticket-number">{num}</span>
+                    ))}
+                  </div>
+                  <div className="ticket-footer">
+                    <span className="ticket-cost">
+                      Coût: {ticket.entryPoints} points
+                    </span>
+                    <span className={`status-badge ${ticket.status}`}>
+                      {ticket.status === 'pending' ? 'En attente' : 
+                       ticket.status === 'won' ? 'Gagnant' : 'Perdu'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="no-tickets">
-              <p>Vous n'avez pas encore participé à un tirage</p>
-              <button className="action-btn" onClick={handleBuyTicket}>
-                Acheter un ticket
-              </button>
+              <p>Aucun ticket acheté</p>
             </div>
           )}
         </div>
       </div>
-      
-      {showTicketModal && (
-        <div className="ticket-modal">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>{animationPhase === 2 ? "Votre grille attribuée" : "Attribution en cours..."}</h3>
-              <button className="close-btn" onClick={() => {
-                setShowTicketModal(false);
-                setAnimationPhase(0);
-                clearInterval(animationIntervalRef.current);
-              }}>
-                &times;
-              </button>
-            </div>
-            
-            <div className="grid-animation-container">
-              {animationPhase === 1 && (
-                <div className="animation-grid">
-                  {animationNumbers.slice(0, 50).map((num, index) => (
-                    <div key={index} className="animation-number">{num}</div>
-                  ))}
-                </div>
-              )}
-              
-              {animationPhase === 2 && assignedGrid && (
-                <>
-                  <div className="final-grid">
-                    {assignedGrid.numbers.map((num, index) => (
-                      <div key={index} className="final-number">{num}</div>
-                    ))}
-                  </div>
-                  <div className="grid-info">
-                    <p>Cette grille vous a été attribuée aléatoirement</p>
-                    <p className="info-text">
-                      Le statut gagnant sera révélé après le tirage
-                    </p>
-                    <button 
-                      className="confirm-btn"
-                      onClick={confirmParticipation}
-                    >
-                      Confirmer la participation
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

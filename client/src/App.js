@@ -6,9 +6,10 @@ import React from "react";
 import LandingPage from "./pages/LandingPage.js";
 import LoginPage from "./pages/LoginPage.js";
 import CompleteProfile from "./pages/CompleteProfile.js";
-import History from "./pages/History/History.js";
-import GamePage from "./pages/Game.js";
-import Result from "./pages/Result.js";
+import TicketHistory from "./pages/History/History.js";
+import Game from "./pages/Game.js"
+import LiveDrawPage from "./pages/LiveDraw/LiveDrawPage.js";
+
 
 function App() {
   return (
@@ -16,11 +17,10 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage/>} /> 
         <Route path="/Login" element={<LoginPage/>} /> 
-        <Route path="/Game" element={<GamePage/>} /> 
-        <Route path="/History" element={<History/>} /> 
-        <Route path="/Result" element={<Result/>} /> 
-      
-
+        <Route path="/LiveDraw" element={<LiveDrawPage/>} /> 
+        
+        <Route path="/History" element={<TicketHistory/>} /> 
+        <Route path="/Game" element={<Game/>} /> 
         <Route path="/complete-profile" element={<CompleteProfile/>} /> 
 
       </Routes>

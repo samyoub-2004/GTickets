@@ -9,6 +9,8 @@ import CompleteProfile from "./pages/CompleteProfile.js";
 import TicketHistory from "./pages/History/History.js";
 import Game from "./pages/Game.js"
 import LiveDrawPage from "./pages/LiveDraw/LiveDrawPage.js";
+import DrawsPage from "./pages/allDraws/DrawsPage.js";
+
 
 
 function App() {
@@ -18,10 +20,10 @@ function App() {
         <Route path="/" element={<LandingPage/>} /> 
         <Route path="/Login" element={<LoginPage/>} /> 
         <Route path="/LiveDraw" element={<LiveDrawPage/>} /> 
-        
         <Route path="/History" element={<TicketHistory/>} /> 
         <Route path="/Game" element={<Game/>} /> 
-        <Route path="/complete-profile" element={<CompleteProfile/>} /> 
+        <Route path="/complete-profile" element={<CompleteProfile/>} />
+        <Route path="/AllDraws" element={<DrawsPage/>} /> 
 
       </Routes>
     </Router>

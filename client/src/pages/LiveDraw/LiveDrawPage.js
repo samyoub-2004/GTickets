@@ -124,7 +124,7 @@ const LiveDrawPage = () => {
 
   // Naviguer vers la page des tirages
   const allerTirages = () => {
-    navigate('/draws');
+    navigate('/AllDraws');
   };
 
   // Rendu des numéros avec animation

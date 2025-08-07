@@ -20,7 +20,11 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
     setIsNavOpen(false);
   };
 
-  
+  // Nouvelle fonction pour naviguer vers la page des tirages
+  const handleViewAllDraws = () => {
+    navigate('/AllDraws');
+    setIsNavOpen(false);
+  };
 
   const handleReloadClick = () => {
     setShowReloadPopup(true);
@@ -98,7 +102,7 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
           
           <div className="navbar-links">
             <div className="navbar-item countdown-container">
-              <div className="countdown-icon">⏱️</div>
+              
               <div className="countdown-value">{countdown}</div>
             </div>
             
@@ -108,7 +112,13 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
               <div className="credits-label">Crédits</div>
             </div>
 
-           
+            {/* Nouveau bouton pour Tous les tirages */}
+            <div className="navbar-item">
+              <button className="all-draws-btn" onClick={handleViewAllDraws}>
+                <span className="btn-icon">🎫</span>
+                <span className="btn-text">Tous les tirages</span>
+              </button>
+            </div>
 
             <div className="navbar-item">
               <button className="history-btn" onClick={handleViewHistory}>

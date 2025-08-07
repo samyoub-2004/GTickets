@@ -115,10 +115,23 @@ app.get('/api/game-data', authenticate, async (req, res) => {
 app.post('/api/purchase-ticket', authenticate, async (req, res) => {
   try {
     const userId = req.user.uid;
-    const { selectedNumbers, prize } = req.body;
+    const { selectedNumbers } = req.body;
     const MAX_TICKETS_PER_USER = 2;
+
+    // Récupération du prix officiel depuis la base de données
+    const prizeConfigRef = db.collection('settings').doc('prize_object');
+    const prizeConfigDoc = await prizeConfigRef.get();
     
-    // Vérifier les tickets en attente
+    if (!prizeConfigDoc.exists) {
+      return res.status(500).json({ error: 'Configuration du jeu indisponible' });
+    }
+
+    const entryPoints = Number(prizeConfigDoc.data().entryPoints);
+    if (isNaN(entryPoints)) {
+      return res.status(500).json({ error: 'Configuration de prix invalide' });
+    }
+
+    // Vérification des tickets en attente
     const pendingTickets = await db.collection('tickets')
       .where('userId', '==', userId)
       .where('status', '==', 'pending')
@@ -128,11 +141,11 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
       return res.status(400).json({ error: `Limite de ${MAX_TICKETS_PER_USER} tickets atteinte` });
     }
     
-    // Vérifier les crédits
+    // Vérification des crédits avec le prix officiel
     const userDoc = await db.collection('users').doc(userId).get();
     const userCredits = userDoc.data().credits || 0;
     
-    if (userCredits < prize.entryPoints) {
+    if (userCredits < entryPoints) {
       return res.status(400).json({ error: 'Crédits insuffisants' });
     }
     
@@ -141,15 +154,15 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
       const userRef = db.collection('users').doc(userId);
       const statsRef = db.collection('stats').doc('currentStats');
       
-      // Mise à jour des crédits
+      // Mise à jour des crédits avec le prix officiel
       transaction.update(userRef, {
-        credits: admin.firestore.FieldValue.increment(-prize.entryPoints)
+        credits: admin.firestore.FieldValue.increment(-entryPoints)
       });
       
       // Mise à jour des stats
       transaction.update(statsRef, {
         totalTicketsSold: admin.firestore.FieldValue.increment(1),
-        totalRevenue: admin.firestore.FieldValue.increment(prize.entryPoints)
+        totalRevenue: admin.firestore.FieldValue.increment(entryPoints)
       });
       
       // Création du ticket
@@ -160,7 +173,7 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
         drawId: "current",
         status: "pending",
         purchaseDate: new Date(),
-        entryPoints: prize.entryPoints
+        entryPoints: entryPoints  // Utilisation du prix officiel
       };
       
       transaction.set(db.collection('tickets').doc(), ticketData);
@@ -168,7 +181,7 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
     
     res.json({ 
       success: true,
-      newCredits: userCredits - prize.entryPoints
+      newCredits: userCredits - entryPoints
     });
     
   } catch (error) {

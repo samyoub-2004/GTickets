@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from './FirebaseConf/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -151,6 +151,21 @@ const LoginPage = () => {
           return;
         }
         
+        // Compter le nombre d'utilisateurs existants
+        let initialCredits = 0;
+        try {
+          const usersCollection = collection(db, 'users');
+          const snapshot = await getCountFromServer(usersCollection);
+          const userCount = snapshot.data().count;
+          
+          // Accorder 2000 crédits uniquement aux 50 premiers
+          if (userCount < 50) {
+            initialCredits = 2000;
+          }
+        } catch (countError) {
+          console.error("Erreur de comptage des utilisateurs:", countError);
+        }
+        
         const newSponsorCode = `LP-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         
         await setDoc(userRef, {
@@ -158,7 +173,7 @@ const LoginPage = () => {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          credits: 2000,
+          credits: initialCredits,
           sponsorCode: newSponsorCode,
           referredBy: validation.referrerId || null,
           profileCompleted: false,
@@ -196,8 +211,6 @@ const LoginPage = () => {
         
         <div className="login-form">
           
-        
-          
           <button 
             className="google-btn"
             onClick={handleStartTransition}
@@ -229,8 +242,6 @@ const LoginPage = () => {
             </p>
           </div>
         </div>
-        
-       
         
         <div className="footer">
           <p>Jouez avec modération • Interdit aux moins de 18 ans</p>

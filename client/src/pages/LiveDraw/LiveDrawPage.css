@@ -1,0 +1,514 @@
+/* src/pages/LiveDrawPage.css */
+.loto-page-direct {
+  min-height: 100vh;
+  background: var(--dark-bg);
+  color: var(--text-light);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* En-tête */
+.loto-entete {
+  background: var(--darker-bg);
+  border-bottom: 1px solid var(--card-border);
+  padding: 1.5rem 2rem;
+  text-align: center;
+}
+
+.loto-contenu-entete h1 {
+  font-size: 2.2rem;
+  margin: 0;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.loto-date-tirage {
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-size: 1.1rem;
+}
+
+/* Conteneurs principaux */
+.loto-objet-conteneur, .loto-conteneur-programme, 
+.loto-conteneur-direct, .loto-conteneur-resultats,
+.loto-aucun-conteneur {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+/* Objet à gagner */
+.loto-carte-objet {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.loto-image-objet {
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.loto-image-objet img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.loto-placeholder-image {
+  font-size: 5rem;
+  color: var(--gold-secondary);
+}
+
+.loto-details-objet {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.loto-details-objet h3 {
+  font-size: 1.8rem;
+  margin: 0 0 1rem;
+  color: var(--gold-accent);
+}
+
+.loto-description-objet {
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.loto-valeur-objet {
+  font-size: 1.3rem;
+  color: var(--gold-primary);
+  font-weight: bold;
+}
+
+/* Compte à rebours */
+.loto-conteneur-programme {
+  text-align: center;
+}
+
+.loto-conteneur-programme h2 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: var(--gold-accent);
+}
+
+.loto-compte-a-rebours {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.loto-element-rebours {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 1.5rem 1rem;
+  min-width: 100px;
+  border: 1px solid var(--card-border);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.loto-valeur-rebours {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--gold-primary);
+  margin-bottom: 0.5rem;
+}
+
+.loto-label-rebours {
+  display: block;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.loto-note-rebours {
+  font-size: 1.2rem;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* Tirage en direct */
+.loto-conteneur-direct {
+  text-align: center;
+}
+
+.loto-indicateur-direct {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: rgba(220, 53, 69, 0.2);
+  border: 1px solid var(--error);
+  border-radius: 30px;
+  padding: 0.5rem 1.2rem;
+  margin-bottom: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  animation: loto-pulsation 2s infinite;
+}
+
+.loto-pulsation-direct {
+  width: 12px;
+  height: 12px;
+  background: var(--error);
+  border-radius: 50%;
+}
+
+@keyframes loto-pulsation {
+  0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.loto-numeros-conteneur {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 3rem 0;
+  flex-wrap: wrap;
+}
+
+.loto-boule {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--darker-bg);
+  border: 2px solid var(--gold-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--gold-accent);
+  transition: all 0.5s ease;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.loto-boule.tiree {
+  background: var(--gold-gradient);
+  color: var(--dark-bg);
+  border-color: var(--gold-accent);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px var(--gold-primary);
+  animation: loto-apparition 0.5s ease-out;
+}
+
+@keyframes loto-apparition {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+.loto-en-cours {
+  margin: 2rem 0;
+}
+
+.loto-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(218, 165, 32, 0.2);
+  border-top: 5px solid var(--gold-primary);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: loto-rotation 1s linear infinite;
+}
+
+@keyframes loto-rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loto-tirage-termine {
+  margin-top: 2rem;
+}
+
+.loto-message-succes {
+  font-size: 1.5rem;
+  color: var(--gold-accent);
+  font-weight: bold;
+}
+
+/* Résultats */
+.loto-conteneur-resultats {
+  text-align: center;
+}
+
+.loto-numeros-finaux {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 2rem 0 3rem;
+  flex-wrap: wrap;
+}
+
+.loto-numero-final {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--gold-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--dark-bg);
+  box-shadow: 0 0 15px var(--gold-primary);
+  animation: loto-apparition 0.5s ease-out;
+}
+
+.loto-gagnants-conteneur {
+  margin: 3rem 0;
+}
+
+.loto-gagnants-conteneur h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: var(--gold-accent);
+}
+
+.loto-categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.loto-categorie {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.loto-categorie h4 {
+  font-size: 1.5rem;
+  margin-top: 0;
+  color: var(--gold-primary);
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.loto-liste-gagnants {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.loto-carte-gagnant {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  text-align: left;
+}
+
+.loto-avatar-gagnant {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: var(--gold-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: var(--dark-bg);
+  font-size: 1.2rem;
+}
+
+.loto-nom-gagnant {
+  margin: 0;
+  font-weight: bold;
+}
+
+.loto-gain-gagnant {
+  margin: 0;
+  color: var(--gold-primary);
+  font-size: 0.9rem;
+}
+
+.loto-resume-gains {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  border: 1px solid var(--card-border);
+}
+
+.loto-grille-resume {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.loto-element-resume {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.loto-element-resume span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.loto-element-resume strong {
+  display: block;
+  font-size: 1.3rem;
+  color: var(--gold-accent);
+}
+
+/* Aucun tirage */
+.loto-aucun-conteneur {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.loto-aucun-contenu {
+  text-align: center;
+  max-width: 600px;
+  padding: 2rem;
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+}
+
+.loto-aucun-contenu h2 {
+  font-size: 2rem;
+  color: var(--gold-accent);
+  margin-bottom: 1rem;
+}
+
+.loto-aucun-contenu p {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+/* Boutons */
+.loto-bouton-primaire, .loto-bouton-secondaire {
+  display: inline-block;
+  padding: 0.8rem 2rem;
+  border-radius: 30px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  font-size: 1rem;
+}
+
+.loto-bouton-primaire {
+  background: var(--gold-gradient);
+  color: var(--dark-bg);
+  box-shadow: 0 5px 15px rgba(218, 165, 32, 0.3);
+}
+
+.loto-bouton-primaire:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(218, 165, 32, 0.5);
+}
+
+.loto-bouton-secondaire {
+  background: transparent;
+  color: var(--gold-primary);
+  border: 2px solid var(--gold-secondary);
+}
+
+.loto-bouton-secondaire:hover {
+  background: rgba(218, 165, 32, 0.1);
+}
+
+/* Loader */
+.loto-chargement-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(12, 12, 20, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.loto-chargement-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid rgba(218, 165, 32, 0.2);
+  border-top: 5px solid var(--gold-primary);
+  border-radius: 50%;
+  animation: loto-rotation 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .loto-compte-a-rebours {
+    flex-wrap: wrap;
+  }
+  
+  .loto-element-rebours {
+    min-width: 80px;
+    padding: 1rem 0.5rem;
+  }
+  
+  .loto-boule {
+    width: 65px;
+    height: 65px;
+    font-size: 2rem;
+  }
+  
+  .loto-categories {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .loto-contenu-entete h1 {
+    font-size: 1.8rem;
+  }
+  
+  .loto-valeur-rebours {
+    font-size: 2rem;
+  }
+  
+  .loto-boule {
+    width: 55px;
+    height: 55px;
+    font-size: 1.7rem;
+  }
+  
+  .loto-carte-objet {
+    flex-direction: column;
+  }
+}

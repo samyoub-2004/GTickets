@@ -23,7 +23,7 @@ const GamePage = () => {
   const MAX_TICKETS_PER_USER = 2;
   const NUMBER_RANGE = 50;
 
-  const API_URL = process.env.API_URL || "http://localhost:5000";
+  const API_URL = "https://gtickets.onrender.com";
 
   // Récupérer les données depuis le serveur
   useEffect(() => {

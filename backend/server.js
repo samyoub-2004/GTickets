@@ -149,21 +149,32 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Crédits insuffisants' });
     }
     
-    // Transaction
+    // Transaction avec gestion robuste des stats
     await db.runTransaction(async (transaction) => {
       const userRef = db.collection('users').doc(userId);
       const statsRef = db.collection('stats').doc('currentStats');
       
-      // Mise à jour des crédits avec le prix officiel
+      // Vérifier l'existence des stats
+      const statsDoc = await transaction.get(statsRef);
+      
+      // Mise à jour des crédits utilisateur
       transaction.update(userRef, {
         credits: admin.firestore.FieldValue.increment(-entryPoints)
       });
       
-      // Mise à jour des stats
-      transaction.update(statsRef, {
-        totalTicketsSold: admin.firestore.FieldValue.increment(1),
-        totalRevenue: admin.firestore.FieldValue.increment(entryPoints)
-      });
+      // Création ou mise à jour des stats
+      if (!statsDoc.exists) {
+        transaction.set(statsRef, {
+          totalTicketsSold: 1,
+          totalRevenue: entryPoints,
+          createdAt: new Date()
+        });
+      } else {
+        transaction.update(statsRef, {
+          totalTicketsSold: admin.firestore.FieldValue.increment(1),
+          totalRevenue: admin.firestore.FieldValue.increment(entryPoints)
+        });
+      }
       
       // Création du ticket
       const ticketData = {
@@ -173,7 +184,7 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
         drawId: "current",
         status: "pending",
         purchaseDate: new Date(),
-        entryPoints: entryPoints  // Utilisation du prix officiel
+        entryPoints: entryPoints
       };
       
       transaction.set(db.collection('tickets').doc(), ticketData);
@@ -189,30 +200,6 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de l\'achat' });
   }
 });
-
-
-
-
-// Ajouter des crédits
-app.post('/api/add-credits', authenticate, async (req, res) => {
-  try {
-    const userId = req.user.uid;
-    const { amount } = req.body;
-    
-    await db.collection('users').doc(userId).update({
-      credits: admin.firestore.FieldValue.increment(amount)
-    });
-    
-    const userDoc = await db.collection('users').doc(userId).get();
-    const newCredits = userDoc.data().credits;
-    
-    res.json({ success: true, newCredits });
-  } catch (error) {
-    console.error('Erreur d\'ajout de crédits:', error);
-    res.status(500).json({ error: 'Erreur lors de la recharge' });
-  }
-});
-
 // Démarrer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur en écoute sur http://localhost:${PORT}`);

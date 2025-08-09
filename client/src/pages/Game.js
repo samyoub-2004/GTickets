@@ -50,7 +50,7 @@ const GamePage = () => {
         }
 
         const data = await response.json();
-        console.log(data);
+        
         
         
         setPrize(data.prize);

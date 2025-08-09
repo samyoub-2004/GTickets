@@ -51,13 +51,14 @@ const GamePage = () => {
 
         const data = await response.json();
         
-        console.log(data);
         
         
         setPrize(data.prize);
         setUserCredits(data.userCredits);
         setStats(data.stats);
         setNextDraw(data.nextDraw);
+       
+        
         
         // Convertir les dates
         const ticketsWithDates = data.userTickets.map(ticket => ({
@@ -88,6 +89,8 @@ const GamePage = () => {
       const now = new Date();
       const drawDate = new Date(nextDraw.scheduledAt);
       const diff = drawDate - now;
+      
+      
       
       if (diff <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });

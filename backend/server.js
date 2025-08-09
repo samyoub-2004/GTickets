@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 // Configuration CORS mise à jour
 const allowedOrigins = [
-  'http://localhost:3000',
+  'http://localhost:3002',
   'https://gtickets-1.onrender.com'
 ];
 

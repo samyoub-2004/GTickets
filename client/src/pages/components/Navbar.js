@@ -20,7 +20,6 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
     setIsNavOpen(false);
   };
 
-  // Nouvelle fonction pour naviguer vers la page des tirages
   const handleViewAllDraws = () => {
     navigate('/AllDraws');
     setIsNavOpen(false);
@@ -52,18 +51,21 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
       
       if (querySnapshot.empty) {
         setRechargeError("Code invalide ou déjà utilisé");
+        setIsLoading(false);
         return;
       }
 
       const cardDoc = querySnapshot.docs[0];
       const cardData = cardDoc.data();
       
+      // Update the card document
       await updateDoc(doc(db, "recharge_cards", cardDoc.id), {
         used: true,
         usedAt: new Date(),
         usedBy: auth.currentUser.uid
       });
 
+      // Update user credits
       onAddCredits(cardData.da);
       setShowReloadPopup(false);
       setRechargeCode('');
@@ -102,7 +104,6 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
           
           <div className="navbar-links">
             <div className="navbar-item countdown-container">
-              
               <div className="countdown-value">{countdown}</div>
             </div>
             
@@ -112,7 +113,6 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
               <div className="credits-label">Crédits</div>
             </div>
 
-            {/* Nouveau bouton pour Tous les tirages */}
             <div className="navbar-item">
               <button className="all-draws-btn" onClick={handleViewAllDraws}>
                 <span className="btn-icon">🎫</span>
@@ -144,7 +144,6 @@ const Navbar = ({ countdown, userCredits, onLogout, onAddCredits }) => {
         </div>
       </nav>
 
-      {/* Popup de recharge */}
       {showReloadPopup && (
         <div className="reload-popup">
           <div className="popup-content">

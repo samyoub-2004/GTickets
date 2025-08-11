@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 // Configuration CORS mise à jour
 const allowedOrigins = [
-  'http://localhost:3002',
+  'http://localhost:3000',
   'https://gtickets-1.onrender.com'
 ];
 
@@ -135,10 +135,15 @@ app.get('/api/game-data', authenticate, async (req, res) => {
 app.post('/api/purchase-ticket', authenticate, async (req, res) => {
   try {
     const userId = req.user.uid;
-    const { selectedNumbers } = req.body;
+    const { selectedNumbers, luckyNumber } = req.body;
+    
+    if (!luckyNumber) {
+      return res.status(400).json({ error: 'Numéro chance manquant' });
+    }
+
     const MAX_TICKETS_PER_USER = 2;
 
-    // Récupération du prix officiel depuis la base de données
+    // Récupération du prix officiel
     const prizeConfigRef = db.collection('settings').doc('prize_object');
     const prizeConfigDoc = await prizeConfigRef.get();
     
@@ -161,7 +166,7 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
       return res.status(400).json({ error: `Limite de ${MAX_TICKETS_PER_USER} tickets atteinte` });
     }
     
-    // Vérification des crédits avec le prix officiel
+    // Vérification des crédits
     const userDoc = await db.collection('users').doc(userId).get();
     const userCredits = userDoc.data().credits || 0;
     
@@ -169,20 +174,19 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Crédits insuffisants' });
     }
     
-    // Transaction avec gestion robuste des stats
+    // Transaction
     await db.runTransaction(async (transaction) => {
       const userRef = db.collection('users').doc(userId);
       const statsRef = db.collection('stats').doc('currentStats');
       
-      // Vérifier l'existence des stats
       const statsDoc = await transaction.get(statsRef);
       
-      // Mise à jour des crédits utilisateur
+      // Mise à jour crédits utilisateur
       transaction.update(userRef, {
         credits: admin.firestore.FieldValue.increment(-entryPoints)
       });
       
-      // Création ou mise à jour des stats
+      // Mise à jour stats
       if (!statsDoc.exists) {
         transaction.set(statsRef, {
           totalTicketsSold: 1,
@@ -196,9 +200,10 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
         });
       }
       
-      // Création du ticket
+      // Création du ticket avec luckyNumber
       const ticketData = {
         numbers: selectedNumbers,
+        luckyNumber,
         userId,
         userName: req.user.name || 'Utilisateur',
         drawId: "current",
@@ -220,8 +225,64 @@ app.post('/api/purchase-ticket', authenticate, async (req, res) => {
     res.status(500).json({ error: 'Erreur lors de l\'achat' });
   }
 });
+
+// Nouvelle fonction: Ajouter des crédits
+app.post('/api/add-credits', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const { amount } = req.body;
+   
+    
+
+    // Validation du montant
+    if (!amount || isNaN(amount)) {
+      return res.status(400).json({ error: 'Montant invalide' });
+    }
+
+    const creditsAmount = Number(amount);
+    if (creditsAmount <= 0) {
+      return res.status(400).json({ error: 'Le montant doit être positif' });
+    }
+
+    // Mise à jour transactionnelle des crédits
+    const userRef = db.collection('users').doc(userId);
+    const statsRef = db.collection('stats').doc('currentStats');
+
+    await db.runTransaction(async (transaction) => {
+      const userDoc = await transaction.get(userRef);
+      
+      if (!userDoc.exists) {
+        throw new Error('Utilisateur non trouvé');
+      }
+
+      const newCredits = (userDoc.data().credits || 0) + creditsAmount;
+      
+      // Mise à jour des crédits utilisateur
+      transaction.update(userRef, {
+        credits: newCredits
+      });
+
+      
+    });
+
+    // Récupération du nouveau solde
+    const updatedUserDoc = await userRef.get();
+    const newCredits = updatedUserDoc.data().credits || 0;
+
+    res.json({ 
+      success: true,
+      newCredits
+    });
+
+  } catch (error) {
+    console.error('Erreur d\'ajout de crédits:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'ajout de crédits' });
+  }
+});
+
 // Démarrer le serveur
 app.listen(PORT, () => {
   console.log(`Serveur en écoute sur http://localhost:${PORT}`);
   console.log(`Testez Firebase sur http://localhost:${PORT}/test-firebase`);
+  console.log(`Endpoint crédits: POST http://localhost:${PORT}/api/add-credits`);
 });

@@ -1,5 +1,5 @@
 // src/pages/LiveDrawPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../FirebaseConf/firebase';
 import { collection, query, where, doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -14,6 +14,8 @@ const LiveDrawPage = () => {
   const [prizeObject, setPrizeObject] = useState(null);
   const [animationComplete, setAnimationComplete] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [jackpotWinner, setJackpotWinner] = useState(null);
+  const animationRef = useRef(null);
 
   // Charger le tirage actuel et l'objet à gagner en temps réel
   useEffect(() => {
@@ -37,8 +39,15 @@ const LiveDrawPage = () => {
         
         setCurrentDraw(drawData);
         setIsLive(drawData.status === 'live');
+        
+        // Vérifier s'il y a un gagnant du jackpot
+        if (drawData.status === 'result' && drawData.winners) {
+          const jackpot = drawData.winners.find(w => w.matchedLucky);
+          setJackpotWinner(jackpot || null);
+        }
       } else {
         setCurrentDraw(null);
+        setJackpotWinner(null);
       }
       setLoading(false);
     });
@@ -57,7 +66,10 @@ const LiveDrawPage = () => {
     
     loadPrizeObject();
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (animationRef.current) clearInterval(animationRef.current);
+    };
   }, []);
 
   // Gérer le compte à rebours pour les tirages programmés
@@ -87,22 +99,62 @@ const LiveDrawPage = () => {
 
   // Animation des numéros pour les tirages en direct
   useEffect(() => {
-    let interval;
+    if (animationRef.current) {
+      clearInterval(animationRef.current);
+    }
+
     if (isLive && currentDraw?.winningNumbers && !animationComplete) {
       let currentIndex = 0;
       
-      interval = setInterval(() => {
+      // Fonction pour animer un numéro
+      const animateNumber = () => {
         if (currentIndex < currentDraw.winningNumbers.length) {
-          setDrawnNumbers(prev => [...prev, currentDraw.winningNumbers[currentIndex]]);
-          currentIndex++;
-        } else {
-          clearInterval(interval);
-          setAnimationComplete(true);
+          // Animation de chute pour le numéro
+          setDrawnNumbers(prev => {
+            const newNumbers = [...prev];
+            newNumbers[currentIndex] = {
+              value: currentDraw.winningNumbers[currentIndex],
+              animating: true
+            };
+            return newNumbers;
+          });
+
+          // Après l'animation, marquer comme complété
+          setTimeout(() => {
+            setDrawnNumbers(prev => {
+              const newNumbers = [...prev];
+              newNumbers[currentIndex] = {
+                value: currentDraw.winningNumbers[currentIndex],
+                animating: false
+              };
+              return newNumbers;
+            });
+            
+            currentIndex++;
+            
+            if (currentIndex >= currentDraw.winningNumbers.length) {
+              setAnimationComplete(true);
+            }
+          }, 800); // Durée de l'animation
         }
-      }, 1500);
+      };
+
+      // Démarrer immédiatement le premier numéro
+      animateNumber();
+      
+      // Démarrer l'intervalle pour les numéros suivants
+      animationRef.current = setInterval(() => {
+        if (currentIndex < currentDraw.winningNumbers.length) {
+          animateNumber();
+        } else {
+          clearInterval(animationRef.current);
+        }
+      }, 2000);
     }
     
-    return () => clearInterval(interval);
+    return () => {
+      if (animationRef.current) clearInterval(animationRef.current);
+    };
   }, [isLive, currentDraw, animationComplete]);
 
   // Formater la date
@@ -133,14 +185,19 @@ const LiveDrawPage = () => {
     
     return (
       <div className="loto-numeros-conteneur">
-        {currentDraw.winningNumbers.map((num, index) => (
-          <div 
-            key={index}
-            className={`loto-boule ${drawnNumbers.includes(num) ? 'tiree' : ''}`}
-          >
-            {drawnNumbers.includes(num) ? num : '?'}
-          </div>
-        ))}
+        {Array(5).fill().map((_, index) => {
+          const numberData = drawnNumbers[index];
+          const isDrawn = numberData && numberData.value;
+          
+          return (
+            <div 
+              key={index}
+              className={`loto-boule ${isDrawn ? 'tiree' : ''} ${numberData?.animating ? 'animating' : ''}`}
+            >
+              {isDrawn ? numberData.value : '?'}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -151,7 +208,40 @@ const LiveDrawPage = () => {
       return <p className="loto-aucun-gagnant">Aucun gagnant pour ce tirage</p>;
     }
     
-    // Grouper les gagnants par catégorie
+    // Si un jackpot winner existe, n'afficher que lui
+    if (jackpotWinner) {
+      return (
+        <div className="loto-gagnants-conteneur">
+          <div className="loto-jackpot-header">
+            <h3>Gagnant du Jackpot! 🏆</h3>
+            <div className="loto-fireworks">
+              <div className="loto-firework"></div>
+              <div className="loto-firework"></div>
+              <div className="loto-firework"></div>
+            </div>
+          </div>
+          
+          <div className="loto-carte-gagnant-jackpot">
+            <div className="loto-avatar-gagnant-jackpot">
+              {jackpotWinner.userName?.charAt(0) || 'J'}
+            </div>
+            <div className="loto-info-gagnant">
+              <p className="loto-nom-gagnant">{jackpotWinner.userName || 'Anonyme'}</p>
+              <p className="loto-gain-gagnant">Jackpot: {Math.floor(currentDraw.prizeDistribution.prizePool.jackpot)} da</p>
+              <p className="loto-combinaison-gagnante">
+                5 numéros + numéro chance
+              </p>
+            </div>
+          </div>
+          
+          <div className="loto-message-jackpot">
+            Félicitations! Vous avez remporté l'objet à gagner et le jackpot!
+          </div>
+        </div>
+      );
+    }
+    
+    // Sinon, afficher les gagnants normaux
     const gagnantsParCategorie = {
       5: currentDraw.winners.filter(w => w.matchedNumbers === 5),
       4: currentDraw.winners.filter(w => w.matchedNumbers === 4),
@@ -322,6 +412,7 @@ const LiveDrawPage = () => {
                 {currentDraw.winningNumbers.map((num, index) => (
                   <div key={index} className="loto-numero-final">{num}</div>
                 ))}
+                <div className="loto-numero-chance">+{currentDraw.luckyNumber}</div>
               </div>
             </div>
             
@@ -338,7 +429,10 @@ const LiveDrawPage = () => {
                   <span>Distribué aux joueurs</span>
                   <strong>{currentDraw.prizeDistribution?.distributed?.toFixed(2) || '0.00'} da</strong>
                 </div>
-               
+                <div className="loto-element-resume">
+                  <span>Part de la maison</span>
+                  <strong>{currentDraw.prizeDistribution?.houseCut?.toFixed(2) || '0.00'} da</strong>
+                </div>
               </div>
             </div>
           </div>

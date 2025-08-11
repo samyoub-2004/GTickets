@@ -17,13 +17,15 @@ const GamePage = () => {
   const [stats, setStats] = useState({ totalTicketsSold: 0, totalRevenue: 0 });
   const [nextDraw, setNextDraw] = useState(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [luckyNumber, setLuckyNumber] = useState(null);
   
   // Constantes du jeu
   const MAX_SELECTABLE = 5;
   const MAX_TICKETS_PER_USER = 2;
   const NUMBER_RANGE = 50;
+  const LUCKY_NUMBER_RANGE = 10;
 
-  const API_URL = "https://gtickets.onrender.com";
+  const API_URL = "http://localhost:5000";
 
   // Récupérer les données depuis le serveur
   useEffect(() => {
@@ -51,15 +53,11 @@ const GamePage = () => {
 
         const data = await response.json();
         
-        
-        
         setPrize(data.prize);
         setUserCredits(data.userCredits);
         setStats(data.stats);
         setNextDraw(data.nextDraw);
        
-        
-        
         // Convertir les dates
         const ticketsWithDates = data.userTickets.map(ticket => ({
           ...ticket,
@@ -89,8 +87,6 @@ const GamePage = () => {
       const now = new Date();
       const drawDate = new Date(nextDraw.scheduledAt);
       const diff = drawDate - now;
-      
-      
       
       if (diff <= 0) {
         setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -195,6 +191,11 @@ const GamePage = () => {
     });
   }, [MAX_SELECTABLE]);
 
+  // Gérer la sélection du numéro chance
+  const handleLuckySelect = useCallback((number) => {
+    setLuckyNumber(prev => prev === number ? null : number);
+  }, []);
+
   // Générer des numéros aléatoires
   const generateRandomNumbers = useCallback(() => {
     const numbers = [];
@@ -205,11 +206,15 @@ const GamePage = () => {
       }
     }
     setSelectedNumbers(numbers.sort((a, b) => a - b));
-  }, [MAX_SELECTABLE, NUMBER_RANGE]);
+    
+    // Générer un numéro chance aléatoire
+    const randomLucky = Math.floor(Math.random() * LUCKY_NUMBER_RANGE) + 1;
+    setLuckyNumber(randomLucky);
+  }, [MAX_SELECTABLE, NUMBER_RANGE, LUCKY_NUMBER_RANGE]);
 
   // Acheter un ticket
   const handlePurchaseTicket = async () => {
-    if (!prize ) {
+    if (!prize) {
       showNotification("Aucun tirage en cours", "error");
       return;
     }
@@ -249,8 +254,8 @@ const GamePage = () => {
         },
         body: JSON.stringify({
           selectedNumbers,
-          prize,
-          
+          luckyNumber,
+          prize
         })
       });
 
@@ -267,6 +272,7 @@ const GamePage = () => {
       const newTicket = {
         id: `temp-${Date.now()}`,
         numbers: [...selectedNumbers].sort((a, b) => a - b),
+        luckyNumber,
         userId: user.uid,
         status: "pending",
         purchaseDate: new Date(),
@@ -279,6 +285,7 @@ const GamePage = () => {
         totalRevenue: prev.totalRevenue + prize.entryPoints
       }));
       setSelectedNumbers([]);
+      setLuckyNumber(null);
       
       showNotification("Ticket acheté avec succès!", "success");
       
@@ -302,6 +309,19 @@ const GamePage = () => {
       </button>
     ));
   }, [NUMBER_RANGE, selectedNumbers, handleNumberSelect, MAX_SELECTABLE]);
+
+  // Générer la grille de numéros chance
+  const renderLuckyGrid = useCallback(() => {
+    return Array.from({ length: LUCKY_NUMBER_RANGE }, (_, i) => i + 1).map(num => (
+      <button
+        key={`lucky-${num}`}
+        className={`lucky-btn ${luckyNumber === num ? 'selected' : ''}`}
+        onClick={() => handleLuckySelect(num)}
+      >
+        {num}
+      </button>
+    ));
+  }, [LUCKY_NUMBER_RANGE, luckyNumber, handleLuckySelect]);
 
   // Navigation
   const handleLogout = useCallback(() => auth.signOut().then(() => navigate('/')), [navigate]);
@@ -545,6 +565,13 @@ const GamePage = () => {
             {renderNumberGrid()}
           </div>
           
+          <div className="lucky-section">
+            <h3>Numéro Chance (1-{LUCKY_NUMBER_RANGE})</h3>
+            <div className="lucky-grid">
+              {renderLuckyGrid()}
+            </div>
+          </div>
+          
           <div className="selection-info">
             <p>
               <span>Numéros sélectionnés: </span>
@@ -553,6 +580,10 @@ const GamePage = () => {
                   ? selectedNumbers.sort((a, b) => a - b).join(', ') 
                   : 'Aucun'}
               </strong>
+            </p>
+            <p>
+              <span>Numéro chance: </span>
+              <strong>{luckyNumber || 'Aucun'}</strong>
             </p>
             <p>
               <span>Coût: </span>
@@ -613,6 +644,9 @@ const GamePage = () => {
                     {ticket.numbers.sort((a, b) => a - b).map(num => (
                       <span key={num} className="ticket-number">{num}</span>
                     ))}
+                    {ticket.luckyNumber && (
+                      <span className="ticket-lucky-number">★ {ticket.luckyNumber}</span>
+                    )}
                   </div>
                   <div className="ticket-footer">
                     <span className="ticket-cost">
